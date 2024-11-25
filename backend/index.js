@@ -1,111 +1,126 @@
-import express from "express";
-import cors from 'cors';
-import mysql from 'mysql2';
+const express = require('express');
+const bodyParser = require('body-parser');
+const mysql = require('mysql2/promise');
 
 const app = express();
-const port = 3000;
+app.use(bodyParser.json());
 
-app.use(cors())
-
-app.use(express.json());
-
-const pool =  mysql.createPool({
-    user: 'root',
-    host: 'localhost',
-    database: 'webbolt',
-    password: '',
-}).promise();
-
-// GET /tablets - Retrieve all tablets
-app.get('/tablets', async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 3;
-        const offset = (page - 1) * limit;
-
-        const [rows] = await pool.query('SELECT * FROM ipad_specs LIMIT ? OFFSET ?', [limit, offset]);
-
-        const [countResult] = await pool.query('SELECT COUNT(*) AS total FROM ipad_specs');
-        const total = countResult[0].total;
-
-        res.status(200).json({
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-            data: rows,
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Error retrieving tablets');
-    }
+// Adatbázis kapcsolat
+const db = mysql.createPool({
+  host: 'localhost',
+  user: 'root', // Az adatbázis felhasználója
+  password: '', // Az adatbázis jelszava
+  database: 'music', // Az adatbázis neve
 });
 
-app.get('/tablets/:id', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM ipad_specs WHERE id = $1', [req.params.id]);
-        if (result.rows.length === 0) return res.status(404).send('Tablet not found');
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Error retrieving tablet');
-    }
+// Teszt endpoint
+app.get('/', (req, res) => {
+  res.send('Songs API is running!');
 });
 
-// POST /tablets - Add a new tablet
-app.post('/tablets', async (req, res) => {
-    const { os, processor_speed, processor_cores, display_size, display_resolution, ram_size, description, price } = req.body;
-    try {
-        // Insert data into the database
-        const insertResult = await pool.query(
-            'INSERT INTO ipad_specs (os, processor_speed, processor_cores, display_size, display_resolution, ram_size, description, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [os, processor_speed, processor_cores, display_size, display_resolution, ram_size, description, price]
-        );
+/// *** CRUD ÉS MŰVELETEK *** ///
 
-        // Retrieve the inserted row
-        const [newTablet] = await pool.query('SELECT * FROM ipad_specs WHERE id = LAST_INSERT_ID()');
-
-        res.status(201).json(newTablet[0]);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Error adding tablet');
-    }
+// ** 1. Listázás (Lapozás) **
+app.get('/songs', async (req, res) => {
+  const { skip = 0, take = 10 } = req.query;
+  try {
+    const [rows] = await db.query('SELECT * FROM Songs LIMIT ? OFFSET ?', [parseInt(take), parseInt(skip)]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
 });
 
-
-// DELETE /tablets/:id - Delete a specific tablet by ID
-app.delete('/tablets/:id', async (req, res) => {
-    try {
-        // First, fetch the tablet to verify it exists and get its details
-        const [tablet] = await pool.query('SELECT * FROM ipad_specs WHERE id = ?', [req.params.id]);
-        if (tablet.length === 0) return res.status(404).send('Tablet not found');
-
-        // Then, delete the tablet
-        await pool.query('DELETE FROM ipad_specs WHERE id = ?', [req.params.id]);
-
-        // Return the deleted tablet's details
-        res.json(tablet[0]);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Error deleting tablet');
-    }
+// ** 2. Új dal felvétele **
+app.post('/songs', async (req, res) => {
+  const { title, artist_id, album_id, genre, release_date, rating } = req.body;
+  try {
+    const [result] = await db.query(
+      'INSERT INTO Songs (title, artist_id, album_id, genre, release_date, rating) VALUES (?, ?, ?, ?, ?, ?)',
+      [title, artist_id, album_id, genre, release_date, rating || 0]
+    );
+    res.json({ id: result.insertId, message: 'Song added successfully!' });
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
 });
 
-
-// PUT /tablets/:id - Update a specific tablet by ID
-app.put('/tablets/:id', async (req, res) => {
-    const { os, processor_speed, processor_cores, display_size, display_resolution, ram_size, description, price } = req.body;
-    try {
-        const result = await pool.query(
-            'UPDATE ipad_specs SET os = $1, processor_speed = $2, processor_cores = $3, display_size = $4, display_resolution = $5, ram_size = $6, description = $7, price = $8 WHERE id = $9 RETURNING *',
-            [os, processor_speed, processor_cores, display_size, display_resolution, ram_size, description, price, req.params.id]
-        );
-        if (result.rows.length === 0) return res.status(404).send('Tablet not found');
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Error updating tablet');
-    }
+// ** 3. Dal törlése **
+app.delete('/songs/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('DELETE FROM Songs WHERE id = ?', [id]);
+    res.json({ message: 'Song deleted successfully!' });
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
 });
 
-app.listen(port);
+// ** 4. Teljes módosítás **
+app.put('/songs/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, artist_id, album_id, genre, release_date, rating } = req.body;
+  try {
+    await db.query(
+      'UPDATE Songs SET title = ?, artist_id = ?, album_id = ?, genre = ?, release_date = ?, rating = ? WHERE id = ?',
+      [title, artist_id, album_id, genre, release_date, rating, id]
+    );
+    res.json({ message: 'Song updated successfully!' });
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+// ** 5. Keresés cím alapján **
+app.get('/songs/search', async (req, res) => {
+  const { title } = req.query;
+  try {
+    const [rows] = await db.query('SELECT * FROM Songs WHERE title LIKE ?', [`%${title}%`]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+// ** 6. Rendezés **
+app.get('/songs/sort', async (req, res) => {
+  const { field = 'title', order = 'ASC' } = req.query;
+  try {
+    const [rows] = await db.query(`SELECT * FROM Songs ORDER BY ${field} ${order}`);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+// ** 7. Toggle favorite státusz **
+app.patch('/songs/:id/toggle-favorite', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [song] = await db.query('SELECT is_favorite FROM Songs WHERE id = ?', [id]);
+    if (!song.length) return res.status(404).send('Song not found!');
+    const is_favorite = !song[0].is_favorite;
+    await db.query('UPDATE Songs SET is_favorite = ? WHERE id = ?', [is_favorite, id]);
+    res.json({ message: 'Favorite status toggled!', is_favorite });
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+// ** 8. Értéknövelés vagy csökkentés **
+app.patch('/songs/:id/increment-rating', async (req, res) => {
+  const { id } = req.params;
+  const { value } = req.query;
+  try {
+    await db.query('UPDATE Songs SET rating = rating + ? WHERE id = ?', [parseFloat(value), id]);
+    res.json({ message: 'Rating updated!' });
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+/// *** SERVER START *** ///
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});

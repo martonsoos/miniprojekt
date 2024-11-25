@@ -32,8 +32,8 @@ CREATE TABLE Songs (
      title VARCHAR(255) NOT NULL,          
      genre VARCHAR(100), 
      release_date DATE, 
-     rating FLOAT DEFAULT 0,);
- 
+     rating FLOAT DEFAULT 0);
+
 
 --
 -- Dumping data for table `phones`
@@ -43,15 +43,14 @@ CREATE TABLE Songs (
 INSERT INTO Songs (title, genre, release_date, rating)
 VALUES 
 ('ratata', 'hip-hop', '2020-09-30', 5.0),
-('luckey hot16', 'rap', '2015-01-10', 4.8),
+('luckey hot16', 'rap', '2015-01-10', 3.8),
 ('pörög a show', 'pop', '2018-04-22', 4.7),
 ('csibész kutyák', 'hip-hop', '2011-01-29', 4.9),
-('Ácsi', 'jazz', '2024-05-12', 4.6);
+('Ácsi', 'jazz', '2024-05-12', 3.6);
 
 --
 -- Indexes for dumped tables
 --
-
 --
 -- Indexes for table `phones`
 --
