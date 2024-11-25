@@ -27,17 +27,15 @@ SET time_zone = "+00:00";
 -- Table structure for table `phones`
 --
 
-CREATE TABLE ipad_specs (
-    id SERIAL PRIMARY KEY,
-    os VARCHAR(50),
-    processor_speed DECIMAL(3, 1),
-    processor_cores INT,
-    display_size DECIMAL(3, 1),
-    display_resolution VARCHAR(20),
-    ram_size INT,
-    description TEXT,
-    price DECIMAL(10, 2)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE Songs (    
+     id INT AUTO_INCREMENT PRIMARY KEY,     
+     title VARCHAR(255) NOT NULL,     
+     artist_id INT,     
+     album_id INT,     
+     genre VARCHAR(100), 
+     release_date DATE, 
+     rating FLOAT DEFAULT 0,);
+ 
 
 --
 -- Dumping data for table `phones`
@@ -116,7 +114,7 @@ INSERT INTO ipad_specs (
 --
 -- Indexes for table `phones`
 --
-ALTER TABLE `ipad_specs`
+ALTER TABLE `songs`
   ADD PRIMARY KEY (`Id`);
 
 --
@@ -126,7 +124,7 @@ ALTER TABLE `ipad_specs`
 --
 -- AUTO_INCREMENT for table `phones`
 --
-ALTER TABLE `ipad_specs`
+ALTER TABLE `songs`
   MODIFY `Id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 COMMIT;
 
