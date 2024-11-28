@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import Kezdolap from './components/Kezdolap';
 import SongsFelvetel from './components/SongsFelvetel';
+import Modositas from './components/Modositas';
 
 const router = createBrowserRouter([
   {
@@ -17,6 +18,10 @@ const router = createBrowserRouter([
   {
     path: 'song-felvetel',
     element: <SongsFelvetel/>
+  },
+  {
+    path: 'modositas',
+    element: <Modositas/>
   }
 ]);
 

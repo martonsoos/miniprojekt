@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-
+import "./style.css"
 interface Song {
     id: number;
     title: string;
     genre: string;
     release_date: string;
     rating : number;
+    isVisible: boolean;
 }
 
 export default function Kezdolap(){
@@ -19,6 +20,7 @@ export default function Kezdolap(){
     const [itemsPerPage, setItemsPerPage] = useState(5);
     const [totalPages, setTotalPages] = useState(1);
 
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Song; direction: 'asc' | 'desc' } | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     useEffect(() => {
         fetch(`http://localhost:3000/songs?page=${currentPage}&limit=${itemsPerPage}`)
@@ -34,6 +36,7 @@ export default function Kezdolap(){
                 return response.json() 
             })
             .then((data) => {
+                console.log(data.data);
                 setSongs(data.data);
                 setTotalPages(data.totalPages);
                 setFilteredSongs(data.data);
@@ -57,6 +60,50 @@ export default function Kezdolap(){
         );
         setFilteredSongs(filtered);
     };
+    const handleToggle = (id : Number, isVisible : boolean) => {
+        try {
+            fetch(`http://localhost:3000/songs/${id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ isVisible: isVisible, 
+
+                }),
+            })
+            .then((response)=> {
+                setFilteredSongs((prev) => prev.map((song) =>
+                    song.id === id ? {...song, isVisible:isVisible} : song
+                    )
+                );
+            }) 
+        }
+        catch{
+
+        }
+    }
+    const handleDelete = (id : Number) => {
+        //alert("Törlendő telefon: " + id)
+        const answer = confirm("Biztosan akarod törölni?")
+        try {
+            const response = fetch(`http://localhost:3000/songs/${id}`,{
+                method : 'DELETE'
+            })
+            setFilteredSongs(songs.filter((songs) => songs.id != id))
+        }
+        catch{
+
+        }
+    }
+    const sortTablets = (key: keyof Song, direction: 'asc' | 'desc') => {
+        const sortedSongs = [...filteredSongs].sort((a, b) => {
+            if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+            if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+        setFilteredSongs(sortedSongs);
+        setSortConfig({ key, direction });
+    };
     if(errorServer){
         return <p>{errorServer}</p>
     }
@@ -69,6 +116,7 @@ export default function Kezdolap(){
     return <>
     <div className="container">
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
+
   <a className="navbar-brand" href="#">Webshop</a>
   <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
     <span className="navbar-toggler-icon"></span>
@@ -103,15 +151,70 @@ export default function Kezdolap(){
                         }}
                         placeholder="Keresés"
                     />
-            </div>
+        </div>
         <table className="table table-hover mt-4">
             <thead className="thead-dark text-center">
                 <tr>
                     <th scope="col">#</th>
-                    <th scope="col">Title</th>
-                    <th scope="col">Genre</th>
-                    <th scope="col">Release Date</th>
-                    <th scope="col">Rating</th>
+                    <th scope="col">Title                
+                        <button
+                            onClick={() => sortTablets('title', 'asc')}
+                            className="btn btn-link"
+                        >
+                           &#8595;
+                        </button>
+                        <button
+                            onClick={() => sortTablets('title', 'desc')}
+                            className="btn btn-link"
+                        >
+                         &#8593;
+                        </button>
+                    </th>
+                    <th scope="col">Genre
+                        <button
+                            onClick={() => sortTablets('genre', 'asc')}
+                            className="btn btn-link"
+                        >
+                            &#8595;
+                        </button>
+                        <button
+                            onClick={() => sortTablets('genre', 'desc')}
+                            className="btn btn-link"
+                        >
+                            &#8593;
+                        </button>
+                    </th>
+                    <th scope="col">Release Date
+                        <button
+                            onClick={() => sortTablets('release_date', 'asc')}
+                            className="btn btn-link"
+                        >
+                            &#8595;
+                        </button>
+                        <button
+                            onClick={() => sortTablets('release_date', 'desc')}
+                            className="btn btn-link"
+                        >
+                            &#8593;
+                        </button>
+                    </th>
+                    <th scope="col">Rating
+                        <button
+                            onClick={() => sortTablets('rating', 'asc')}
+                            className="btn btn-link"
+                        >
+                            &#8595;
+                        </button>
+                        <button
+                            onClick={() => sortTablets('rating', 'desc')}
+                            className="btn btn-link"
+                        >
+                            &#8593;
+                        </button>
+                    </th>
+                    <th scope="col">Visible</th>
+                    <th scope="col">Switch</th>
+                    <th scope="col">Delete</th>
                 </tr>
             </thead>
             <tbody>
@@ -122,7 +225,20 @@ export default function Kezdolap(){
                         <td className="text-center">{song.genre}</td>
                         <td className="text-center">{song.release_date.split('T')[0]}</td>
                         <td className="text-center">{song.rating}</td>
-                        <td className="text-center"></td>
+                        <td className="text-center">{song.isVisible? "Látható" : "Nem látható"}</td> 
+                        <td className="text-center"> 
+                        <label className="switch">
+                            <input type="checkbox" checked={song.isVisible} onChange={(e) => handleToggle(song.id, e.target.checked)}/>
+                            <span className="slider round"></span>
+                        </label>
+                        </td>            
+                        <td className="text-center">
+                            <span
+                                style={{cursor: 'pointer'}}
+                                onClick={() => handleDelete(song.id)}
+                                className='btn btn-primary'
+                            >Törlés</span>
+                        </td> 
                     </tr>
                 ))}
             </tbody>
@@ -157,6 +273,9 @@ export default function Kezdolap(){
                 >
                     Next
                 </button>
+            </div>
+            <div>
+                <p></p>
             </div>
      </div>
 </>
